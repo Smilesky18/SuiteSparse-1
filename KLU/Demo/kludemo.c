@@ -7,6 +7,8 @@
 #include <math.h>
 #include <stdio.h>
 #include "klu.h"
+#include <sys/time.h>
+#define MICRO_IN_SEC 1000000.00
 
 /* for handling complex matrices */
 #define REAL(X,i) (X [2*(i)])
@@ -14,6 +16,16 @@
 #define CABS(X,i) (sqrt (REAL (X,i) * REAL (X,i) + IMAG (X,i) * IMAG (X,i)))
 
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
+double microtime(){
+        int tv_sec,tv_usec;
+        double time;
+        struct timeval tv;
+        struct timezone tz;
+        gettimeofday(&tv,&tz);
+
+        return tv.tv_sec+tv.tv_usec/MICRO_IN_SEC;
+}
+
 
 /* ========================================================================== */
 /* === klu_backslash ======================================================== */
@@ -214,8 +226,8 @@ static void klu_demo (int n, int *Ap, int *Ai, double *Ax, int isreal)
     double *B, *X, *R ;
     int i, lunz ;
 
-    printf ("KLU: %s, version: %d.%d.%d\n", KLU_DATE, KLU_MAIN_VERSION,
-        KLU_SUB_VERSION, KLU_SUBSUB_VERSION) ;
+//    printf ("KLU: %s, version: %d.%d.%d\n", KLU_DATE, KLU_MAIN_VERSION,
+//        KLU_SUB_VERSION, KLU_SUBSUB_VERSION) ;
 
     /* ---------------------------------------------------------------------- */
     /* set defaults */
@@ -267,10 +279,10 @@ static void klu_demo (int n, int *Ap, int *Ai, double *Ax, int isreal)
     }
     else
     {
-        printf ("n %d nnz(A) %d nnz(L+U+F) %d resid %g\n"
-            "recip growth %g condest %g rcond %g flops %g\n",
-            n, Ap [n], lunz, rnorm, Common.rgrowth, Common.condest,
-            Common.rcond, Common.flops) ;
+  //      printf ("n %d nnz(A) %d nnz(L+U+F) %d resid %g\n"
+ //           "recip growth %g condest %g rcond %g flops %g\n",
+ //           n, Ap [n], lunz, rnorm, Common.rgrowth, Common.condest,
+ //           Common.rcond, Common.flops) ;
     }
 
     /* ---------------------------------------------------------------------- */
@@ -289,7 +301,7 @@ static void klu_demo (int n, int *Ap, int *Ai, double *Ax, int isreal)
         klu_free (X, 2*n, sizeof (double), &Common) ;
         klu_free (R, 2*n, sizeof (double), &Common) ;
     }
-    printf ("peak memory usage: %g bytes\n\n", (double) (Common.mempeak)) ;
+   // printf ("peak memory usage: %g bytes\n\n", (double) (Common.mempeak)) ;
 }
 
 
@@ -308,6 +320,9 @@ int main (void)
     cholmod_common ch ;
     cholmod_start (&ch) ;
     A = cholmod_read_sparse (stdin, &ch) ;
+    int loop = 100;
+    double t1, t2;
+    double t = 0;
     if (A)
     {
         if (A->nrow != A->ncol || A->stype != 0
@@ -317,10 +332,19 @@ int main (void)
         }
         else
         {
-            klu_demo (A->nrow, A->p, A->i, A->x, A->xtype == CHOLMOD_REAL) ;
+		for ( int i = 0; i < loop; i++ )
+		{
+			t1 = microtime();
+	                klu_demo (A->nrow, A->p, A->i, A->x, A->xtype == CHOLMOD_REAL) ;
+			t2 = microtime() - t1;
+			t += t2;
+			printf("Time is: %lf\n", t2);
+		}
+
         }
         cholmod_free_sparse (&A, &ch) ;
     }
+    printf("Average time is: %lf\n", t/loop);
     cholmod_finish (&ch) ;
     return (0) ;
 }
